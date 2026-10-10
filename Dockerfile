@@ -38,8 +38,8 @@ COPY next.config.ts ./
 COPY tsconfig.json ./
 COPY postcss.config.mjs ./
 
-# Build application (using force script to avoid auto-TypeScript install)
-RUN TYPESCRIPT_DISABLE=1 npx next build
+# Build application (skip TypeScript preflight check that triggers pnpm add)
+RUN SKIP_PREFLIGHT_CHECK=true npx next build
 
 # Remove development dependencies
 RUN pnpm prune --prod
