@@ -35,9 +35,7 @@ RUN pnpm add next@15.5.27
 # Copy application code
 COPY . .
 
-# Build application using classic compiler (not Turbopack)
-# NEXT_BUILD_MODE=classic ensures we use the traditional Babel/Webpack compiler
-ENV NEXT_BUILD_MODE=classic
+# Build application
 RUN npx next build
 
 # Remove development dependencies
