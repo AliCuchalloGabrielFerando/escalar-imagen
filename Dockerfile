@@ -28,10 +28,6 @@ RUN apt-get update -qq && \
 RUN echo "ignore-scripts = false" > .npmrc && \
     pnpm install --frozen-lockfile --prod=false
 
-# Force install Next.js 15.5.27 (exact version from package.json)
-# This overrides any newer version that might be resolved by default
-RUN pnpm add next@15.5.27
-
 # Copy application code
 COPY . .
 
