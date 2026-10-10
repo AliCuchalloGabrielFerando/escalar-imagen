@@ -1,0 +1,5 @@
+# pnpm 10+ reads build-script allowlists from here.
+# protobufjs (transitive dep of onnxruntime-web) needs its postinstall to run
+# so `pnpm install` finishes cleanly.
+allowBuilds:
+  protobufjs: true

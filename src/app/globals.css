@@ -1,0 +1,68 @@
+@import 'tailwindcss';
+
+/* Class-based dark mode (toggled by adding `.dark` on <html>). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+   Design tokens — editorial / monochrome / light (Master Template Blueprint)
+   --------------------------------------------------------------------------- */
+@theme {
+  --color-paper: #ffffff;
+  --color-ink: #0a0a0a;
+  --color-muted: #6b7280;
+  --color-faint: #9ca3af;
+  --color-hairline: #e5e7eb;
+  --color-surface: #fafafa;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), var(--font-inter), ui-sans-serif, sans-serif;
+
+  --tracking-label: 0.22em;
+  --tracking-brand: 0.28em;
+}
+
+/* Dark theme: same monochrome contract, inverted. Overriding the tokens here
+   makes every `bg-paper` / `text-ink` / `border-hairline` utility adapt. */
+html.dark {
+  color-scheme: dark;
+  --color-paper: #0b0b0c;
+  --color-ink: #f4f4f5;
+  --color-muted: #a1a1aa;
+  --color-faint: #71717a;
+  --color-hairline: #26262b;
+  --color-surface: #141417;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+::selection {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+/* Near-zero radius: keep media/content edges square and deliberate. */
+img,
+canvas {
+  display: block;
+}

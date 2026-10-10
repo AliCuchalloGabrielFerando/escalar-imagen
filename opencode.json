@@ -1,0 +1,12 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "gentle-orchestrator",
+  "agents": {
+    "gentle-orchestrator": {
+      "mode": "primary",
+      "provider": "fireworks",
+      "model":  "fireworks-ai/accounts/fireworks/models/deepseek-v4p1-flash#high", 
+      "instructions": "Eres el orquestador de Gentle AI. Aplica las metodologías ODD (Organic-Driven Development), congela el repositorio antes de cada escritura y gestiona los subagentes usando un presupuesto de evidencia eficiente de tokens."
+    }
+  }
+}
