@@ -1,12 +1,14 @@
-# fly.toml app configuration file generated for escalar-imagen on 2026-10-10T19:56:02Z
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
+# fly.toml app configuration for escalar-imagen
+# See https://fly.io/docs/reference/configuration/ for information about this file.
 
 app = 'escalar-imagen'
 primary_region = 'gru'
 
 [build]
+  # Prevent Fly.io from setting NODE_ENV=production during build
+  # which breaks Next.js static generation
+  [build.env]
+    NODE_ENV = ""
 
 [http_service]
   internal_port = 3000
