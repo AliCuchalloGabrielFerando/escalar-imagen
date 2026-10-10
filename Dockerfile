@@ -38,7 +38,10 @@ COPY next.config.ts ./
 COPY tsconfig.json ./
 COPY postcss.config.mjs ./
 
-# Build application (skip TypeScript preflight check that triggers pnpm add)
+# Build application:
+# - NODE_ENV=development coincide con el build local y evita el error de <Html> en prerender
+# - SKIP_PREFLIGHT_CHECK evita el auto-pnpm add de TypeScript que falla con ERR_PNPM_IGNORED_BUILDS
+ENV NODE_ENV=development
 RUN SKIP_PREFLIGHT_CHECK=true npx next build
 
 # Remove development dependencies
