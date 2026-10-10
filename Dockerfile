@@ -31,10 +31,6 @@ RUN pnpm add next@15.5.27
 # Copy application code
 COPY . .
 
-# CRITICAL: Prevent NODE_ENV=production from breaking static generation
-# Set to development for build (Next.js handles production internally)
-ENV NODE_ENV=development
-
 # Build application
 RUN npx next build
 

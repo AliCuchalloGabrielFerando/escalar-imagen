@@ -5,10 +5,6 @@ app = 'escalar-imagen'
 primary_region = 'gru'
 
 [build]
-  # Prevent Fly.io from setting NODE_ENV=production during build
-  # Use development to avoid static generation issues
-  [build.env]
-    NODE_ENV = "development"
 
 [http_service]
   internal_port = 3000
