@@ -1,16 +1,12 @@
 #!/usr/bin/env node
 
+// Launch application directly — build is handled during Docker image build
 import { spawn } from 'node:child_process'
 
 const env = { ...process.env }
 
-// If running the web server then prerender pages
-if (process.argv.slice(-3).join(' ') === 'pnpm run start') {
-  await exec('npx next build --experimental-build-mode generate')
-}
-
-// launch application
-await exec(process.argv.slice(2).join(' '))
+// Start the server
+await exec(process.argv.slice(1).join(' '))
 
 function exec(command) {
   const child = spawn(command, { shell: true, stdio: 'inherit', env })

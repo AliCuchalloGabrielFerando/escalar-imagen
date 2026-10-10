@@ -13,8 +13,7 @@ WORKDIR /app
 ENV NODE_ENV="production"
 
 # Install pnpm
-ARG PNPM_VERSION=latest
-RUN npm install -g pnpm@$PNPM_VERSION
+RUN npm install -g pnpm@latest
 
 
 # Throw-away build stage to reduce size of final image
@@ -24,15 +23,22 @@ FROM base AS build
 RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y build-essential node-gyp pkg-config python-is-python3
 
-# Install node modules
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod=false
+# Install node modules AND allow build scripts
+# protobufjs@7.6.6 has build scripts that pnpm v12 blocks by default.
+RUN echo "ignore-scripts = false" > .npmrc && \
+    pnpm install --frozen-lockfile --prod=false
+
+# Force install Next.js 15.5.27 (exact version from package.json)
+# This overrides any newer version that might be resolved by default
+RUN pnpm add next@15.5.27
 
 # Copy application code
 COPY . .
 
-# Build application
-RUN npx next build --experimental-build-mode compile
+# Build application using classic compiler (not Turbopack)
+# NEXT_BUILD_MODE=classic ensures we use the traditional Babel/Webpack compiler
+ENV NEXT_BUILD_MODE=classic
+RUN npx next build
 
 # Remove development dependencies
 RUN pnpm prune --prod
