@@ -20,17 +20,18 @@ FROM base AS build
 RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y build-essential node-gyp pkg-config python-is-python3
 
+# Copy .npmrc FIRST to allow build scripts for all subsequent pnpm commands
+COPY .npmrc .npmrc
+
 # Install node modules AND allow build scripts
 # protobufjs@7.6.6 has build scripts that pnpm v12 blocks by default.
-RUN echo "ignore-scripts = false" > .npmrc && \
-    pnpm install --frozen-lockfile --prod=false
+RUN pnpm install --frozen-lockfile --prod=false
 
 # Force install exact Next.js 15.5.27 to prevent Turbopack 16.x
 RUN pnpm add next@15.5.27
 
-# Cache bust: copy package files first, then source
-# This ensures new files (error.tsx, not-found.tsx, global-error.tsx) are picked up
-COPY package.json pnpm-lock.yaml .npmrc ./
+# Copy application code
+COPY package.json pnpm-lock.yaml ./
 COPY src ./src
 COPY public ./public
 COPY next.config.ts ./
