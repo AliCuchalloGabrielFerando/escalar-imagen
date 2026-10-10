@@ -31,9 +31,12 @@ RUN pnpm add next@15.5.27
 # Copy application code
 COPY . .
 
-# CRITICAL: Fly.io sets NODE_ENV=production automatically which breaks static generation
-# We must run next build with NODE_ENV explicitly unset in the SAME command
-RUN NODE_ENV= npx next build
+# CRITICAL: Prevent NODE_ENV=production from breaking static generation
+# Set to development for build (Next.js handles production internally)
+ENV NODE_ENV=development
+
+# Build application
+RUN npx next build
 
 # Remove development dependencies
 RUN pnpm prune --prod
