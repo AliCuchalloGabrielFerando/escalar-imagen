@@ -25,6 +25,9 @@ RUN apt-get update -qq && \
 RUN echo "ignore-scripts = false" > .npmrc && \
     pnpm install --frozen-lockfile --prod=false
 
+# Force install exact Next.js 15.5.27 to prevent Turbopack 16.x
+RUN pnpm add next@15.5.27
+
 # Copy application code
 COPY . .
 
