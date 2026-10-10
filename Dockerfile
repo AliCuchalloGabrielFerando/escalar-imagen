@@ -28,8 +28,14 @@ RUN echo "ignore-scripts = false" > .npmrc && \
 # Force install exact Next.js 15.5.27 to prevent Turbopack 16.x
 RUN pnpm add next@15.5.27
 
-# Copy application code
-COPY . .
+# Cache bust: copy package files first, then source
+# This ensures new files (error.tsx, not-found.tsx, global-error.tsx) are picked up
+COPY package.json pnpm-lock.yaml .npmrc ./
+COPY src ./src
+COPY public ./public
+COPY next.config.ts ./
+COPY tsconfig.json ./
+COPY postcss.config.mjs ./
 
 # Build application
 RUN npx next build
