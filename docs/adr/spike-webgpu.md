@@ -76,6 +76,19 @@ software)**. Los tiempos **no son representativos de hardware real** (no hay GPU
 - El fallback WASM funciona correctamente: ORT descarta `webgpu` y usa `wasm`
   (`removing requested execution provider "webgpu" ... not available`).
 
+### Benchmark en hardware real (AMD Radeon RX 9060)
+
+Medición del usuario con la página `public/bench/index.html` (misma imagen y tiling para
+ambos backends):
+
+| Backend | Tiempo | Speedup |
+|---------|--------|---------|
+| **WebGPU** | **~300 ms** | **~66×** |
+| WASM | ~20 s | 1× |
+
+> 🚀 Mucho mayor de lo esperado (ORT documenta 5-10×): el WASM es single-thread y la GPU
+> acelera fuertemente las convoluciones de Real-ESRGAN. Confirma que merece la pena.
+
 ---
 
 ## Impacto en el servidor
@@ -97,7 +110,7 @@ software)**. Los tiempos **no son representativos de hardware real** (no hay GPU
 
 | Aspecto | Resultado |
 |---------|-----------|
-| Velocidad | GPU real esperada 5-10× vs WASM (no medible con SwiftShader) |
+| Velocidad | **~66×** medido en Radeon RX 9060 (~300 ms vs ~20 s) |
 | Cobertura | WebGPU **solo Chromium** (ORT Web no soporta Safari/Firefox aún) → fallback WASM |
 | Memoria GPU | A vigilar en móvil (tile grande = más VRAM) |
 | Privacidad | Sin cambios (todo local) |
@@ -114,6 +127,9 @@ misma imagen y el mismo tiling, con validación de salida (mean RGB) para detect
   media, tamaño de salida y **speedup**.
 - Verificado en headless: ambos backends devuelven el mismo mean (`0.3280`), confirmando que la
   salida es idéntica. *(En SwiftShader WebGPU sale 0.04× por ser software; el dato real requiere GPU.)*
+- El cómputo corre en un **Web Worker** (`bench-worker.js`) para no bloquear el hilo principal
+  (la primera versión síncrona provocaba "page unresponsive" con imágenes reales).
+- **Guarda anti-OOM**: aborta si la salida 4× superaría ~512 MB, con un mensaje claro.
 
 > ⚠️ Es una herramienta de desarrollo: conviene retirarla o gatearla antes de producción.
 
@@ -121,8 +137,8 @@ misma imagen y el mismo tiling, con validación de salida (mean RGB) para detect
 
 ## Limitaciones y trabajo pendiente
 
-1. **Benchmark real pendiente**: medir en GPU de hardware (NVIDIA/AMD/Intel/Apple) — SwiftShader
-   invalida las cifras. Idealmente con Chrome real en desktop y móvil.
+1. **Benchmark real: ✅ hecho** en Radeon RX 9060 (~66×). Pendiente opcional: móvil (Adreno/Mali)
+   y otros navegadores.
 2. **Peso muerto de 26.7 MB** en el build: excluir el wasm emitido (p. ej. condición webpack
    `onnxruntime-web-use-extern-wasm`, o regla para no emitir el asset).
 3. **Dims simbólicas hardcodeadas** (`batch_size`/`height`/`width`): válidas para el modelo por
@@ -137,7 +153,8 @@ misma imagen y el mismo tiling, con validación de salida (mean RGB) para detect
 
 ## Conclusión
 
-**WebGPU es viable para este modelo.** El bloqueo inicial (shape mismatch) es un bug conocido de
-ORT con dims simbólicas, resoluble con `freeDimensionOverrides` + ventana constante, ya
-implementado. El fallback WASM garantiza compatibilidad en Safari/Firefox. El impacto en el
-servidor es nulo (solo el peso muerto del wasm en el build, fácil de eliminar).
+**WebGPU es viable y muy rentable para este modelo.** El bloqueo inicial (shape mismatch) es un bug
+conocido de ORT con dims simbólicas, resuelto con `freeDimensionOverrides` + ventana constante, ya
+implementado. En hardware real (Radeon RX 9060) el speedup medido es de **~66×** (~300 ms vs ~20 s).
+El fallback WASM garantiza compatibilidad en Safari/Firefox. El impacto en el servidor es nulo
+(solo el peso muerto del wasm en el build, fácil de eliminar).
