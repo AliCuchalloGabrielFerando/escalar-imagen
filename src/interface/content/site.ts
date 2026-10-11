@@ -18,6 +18,7 @@ export const SITE = {
       { label: 'Privacidad', href: '/#privacy' },
       { label: 'Preguntas frecuentes', href: '/#faq' },
       { label: 'Demo', href: '/demo' },
+      { label: 'Laboratorio (WebGPU vs WASM)', href: '/lab' },
     ],
   },
 } as const

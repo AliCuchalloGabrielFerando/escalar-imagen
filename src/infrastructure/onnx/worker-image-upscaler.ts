@@ -3,10 +3,7 @@
  * Contains: WorkerImageUpscaler (ImageUpscaler implementation)
  * Rules: Implements an Application port. Bridges the main thread <-> Web Worker.
  */
-import type {
-  ImageUpscaler,
-  UpscaleProgress,
-} from '@/application/ports/image-upscaler.port'
+import type { ImageUpscaler, UpscaleProgress } from '@/application/ports/image-upscaler.port'
 import { RgbaImage } from '@/domain/value-objects/rgba-image.vo'
 import type { UpscaleOptions } from '@/domain/value-objects/upscale-options.vo'
 import { DEFAULT_MODEL_URL } from '../onnx/model'
@@ -74,6 +71,11 @@ export class WorkerImageUpscaler implements ImageUpscaler {
 
     if (message.type === 'progress') {
       entry.onProgress?.({ ratio: message.ratio, message: message.message })
+      return
+    }
+
+    if (message.type === 'backend') {
+      // Diagnostics only; not surfaced in the main UI (see the /lab route).
       return
     }
 

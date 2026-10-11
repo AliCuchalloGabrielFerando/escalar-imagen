@@ -15,7 +15,7 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "next": "15.5.27",
-    "onnxruntime-web": "1.20.1",
+    "onnxruntime-web": "1.30.0",
     "postcss": "^8.5.29",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

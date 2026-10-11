@@ -5,15 +5,16 @@
  */
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
-import type { ImageCodec } from '@/application/ports/image-codec.port'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { EncodeOptions, FormatCapability, ImageCodec, OutputFormat } from '@/composition/container'
+import { OUTPUT_FORMATS } from '@/composition/container'
 import type { UpscaleImageUseCase } from '@/application/use-cases/upscale-image.use-case'
 import {
   createImageCodec,
   createUpscaleImageUseCase,
   DEFAULT_MODEL_URL,
 } from '@/composition/container'
-import type { UpscaleOptionsProps } from '@/composition/container'
+import type { RgbaImage, UpscaleOptionsProps } from '@/composition/container'
 
 export type UpscaleStatus = 'idle' | 'decoding' | 'upscaling' | 'encoding' | 'done' | 'error'
 
@@ -26,6 +27,12 @@ export interface UpscaleState {
   resultWidth: number
   resultHeight: number
   durationMs: number | null
+  /** Output format of the current result. */
+  resultFormat: OutputFormat | null
+  /** File extension for the download. */
+  resultExtension: string | null
+  /** Encoded size in bytes. */
+  resultBytes: number | null
 }
 
 const initialState: UpscaleState = {
@@ -37,13 +44,24 @@ const initialState: UpscaleState = {
   resultWidth: 0,
   resultHeight: 0,
   durationMs: null,
+  resultFormat: null,
+  resultExtension: null,
+  resultBytes: null,
 }
+
+/** Optimistic default before the browser capability probe resolves. */
+const optimisticCapabilities: FormatCapability[] = OUTPUT_FORMATS.map((format) => ({
+  ...format,
+  encodable: true,
+}))
 
 export function useUpscaleImage() {
   const codecRef = useRef<ImageCodec | null>(null)
   const useCasesRef = useRef(new Map<string, UpscaleImageUseCase>())
   const resultUrlRef = useRef<string | null>(null)
+  const resultImageRef = useRef<RgbaImage | null>(null)
   const [state, setState] = useState<UpscaleState>(initialState)
+  const [capabilities, setCapabilities] = useState<FormatCapability[]>(optimisticCapabilities)
 
   const getCodec = useCallback((): ImageCodec => {
     codecRef.current ??= createImageCodec()
@@ -58,6 +76,19 @@ export function useUpscaleImage() {
     return useCase
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    getCodec()
+      .getCapabilities()
+      .then((caps) => {
+        if (!cancelled) setCapabilities(caps)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [getCodec])
+
   const releaseResultUrl = useCallback(() => {
     if (resultUrlRef.current) {
       URL.revokeObjectURL(resultUrlRef.current)
@@ -65,9 +96,29 @@ export function useUpscaleImage() {
     }
   }, [])
 
-  const upscale = useCallback(
-    async (input: Blob, modelUrl: string = DEFAULT_MODEL_URL, options?: UpscaleOptionsProps) => {
+  /** Encode `image` to a blob, swap the object URL and return the new metadata. */
+  const encodeResult = useCallback(
+    async (image: RgbaImage, output: EncodeOptions) => {
+      const blob = await getCodec().encode(image, output)
+      const meta = OUTPUT_FORMATS.find((format) => format.format === output.format)
+      if (!meta) throw new Error(`Formato de salida desconocido: ${output.format}`)
       releaseResultUrl()
+      const url = URL.createObjectURL(blob)
+      resultUrlRef.current = url
+      return { url, extension: meta.extension, bytes: blob.size }
+    },
+    [getCodec, releaseResultUrl],
+  )
+
+  const upscale = useCallback(
+    async (
+      input: Blob,
+      modelUrl: string = DEFAULT_MODEL_URL,
+      options?: UpscaleOptionsProps,
+      output: EncodeOptions = { format: 'png' },
+    ) => {
+      releaseResultUrl()
+      resultImageRef.current = null
       setState({ ...initialState, status: 'decoding', message: 'Decodificando imagen…' })
 
       try {
@@ -87,12 +138,13 @@ export function useUpscaleImage() {
             setState((prev) => ({ ...prev, progress: progress.ratio, message: progress.message })),
         })
 
-        setState((prev) => ({ ...prev, status: 'encoding', progress: 1, message: 'Codificando resultado…' }))
-        const blob = await codec.encode(result)
-        const url = URL.createObjectURL(blob)
-        resultUrlRef.current = url
+        resultImageRef.current = result
 
-        setState({
+        setState((prev) => ({ ...prev, status: 'encoding', progress: 1, message: 'Codificando resultado…' }))
+        const { url, extension, bytes } = await encodeResult(result, output)
+
+        setState((prev) => ({
+          ...prev,
           status: 'done',
           progress: 1,
           message: 'Listo',
@@ -101,19 +153,48 @@ export function useUpscaleImage() {
           resultWidth: result.width,
           resultHeight: result.height,
           durationMs,
-        })
+          resultFormat: output.format,
+          resultExtension: extension,
+          resultBytes: bytes,
+        }))
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         setState((prev) => ({ ...prev, status: 'error', error: message, message: '' }))
       }
     },
-    [getCodec, getUseCase, releaseResultUrl],
+    [encodeResult, getCodec, getUseCase, releaseResultUrl],
+  )
+
+  /** Re-encode the existing result without re-running inference. */
+  const reencode = useCallback(
+    async (output: EncodeOptions) => {
+      const image = resultImageRef.current
+      if (!image) return
+      setState((prev) => ({ ...prev, status: 'encoding', message: 'Recodificando…', error: null }))
+      try {
+        const { url, extension, bytes } = await encodeResult(image, output)
+        setState((prev) => ({
+          ...prev,
+          status: 'done',
+          message: 'Listo',
+          resultUrl: url,
+          resultFormat: output.format,
+          resultExtension: extension,
+          resultBytes: bytes,
+        }))
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        setState((prev) => ({ ...prev, status: 'error', error: message, message: '' }))
+      }
+    },
+    [encodeResult],
   )
 
   const reset = useCallback(() => {
     releaseResultUrl()
+    resultImageRef.current = null
     setState(initialState)
   }, [releaseResultUrl])
 
-  return { ...state, upscale, reset }
+  return { ...state, capabilities, upscale, reencode, reset }
 }

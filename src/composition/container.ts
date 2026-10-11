@@ -21,3 +21,11 @@ export function createImageCodec(): ImageCodec {
 export { DEFAULT_MODEL_URL } from '@/infrastructure/onnx/model'
 export { UpscaleOptions } from '@/domain/value-objects/upscale-options.vo'
 export type { UpscaleOptionsProps } from '@/domain/value-objects/upscale-options.vo'
+export { OUTPUT_FORMATS } from '@/application/ports/image-codec.port'
+export type {
+  EncodeOptions,
+  FormatCapability,
+  ImageCodec,
+  OutputFormat,
+} from '@/application/ports/image-codec.port'
+export type { RgbaImage } from '@/domain/value-objects/rgba-image.vo'
