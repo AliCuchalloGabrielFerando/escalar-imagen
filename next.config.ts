@@ -7,6 +7,7 @@ import type { NextConfig } from 'next'
  * so no extra loader configuration is required.
  */
 const nextConfig: NextConfig = {
+  output: "standalone",
   reactStrictMode: true,
 }
 

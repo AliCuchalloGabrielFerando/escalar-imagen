@@ -186,8 +186,9 @@ export function ToolSection() {
               className="border border-hairline bg-paper px-3 py-2 text-sm outline-none focus:border-ink"
             />
           </label>
-          <label className="flex flex-col gap-2">
-            <span className="text-xs uppercase tracking-label text-faint">Denoise (0–1)</span>
+          <label className="flex items-center gap-2">
+            <span className="text-xs uppercase tracking-label text-faint">Denoise (0.0–1.0)</span>
+            <small className="text-[0.65rem] text-muted/60">decimales permitidos</small>
             <input
               type="number"
               min={0}
@@ -195,7 +196,7 @@ export function ToolSection() {
               step={0.1}
               value={denoiseWeight}
               onChange={(event) => setDenoiseWeight(Number(event.target.value))}
-              className="border border-hairline bg-paper px-3 py-2 text-sm outline-none focus:border-ink"
+              className="border border-hairline bg-paper px-3 py-2 text-sm outline-none focus:border-ink w-auto"
             />
           </label>
         </div>

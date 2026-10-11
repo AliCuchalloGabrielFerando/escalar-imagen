@@ -7,13 +7,14 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -H 0.0.0.0",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:force": "TYPESCRIPT_DISABLE=1 npx next build"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.3",
-    "next": "^15.5.0",
+    "next": "15.5.27",
     "onnxruntime-web": "1.20.1",
     "postcss": "^8.5.29",
     "react": "^19.0.0",
@@ -24,7 +25,7 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.6.0"
+    "typescript": "5.8.2"
   },
   "packageManager": "pnpm@12.10.1"
 }

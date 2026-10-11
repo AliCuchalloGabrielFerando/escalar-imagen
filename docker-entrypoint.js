@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process'
 const env = { ...process.env }
 
 // Start the server
-await exec(process.argv.slice(1).join(' '))
+await exec(process.argv.slice(2).join(' '))
 
 function exec(command) {
   const child = spawn(command, { shell: true, stdio: 'inherit', env })
