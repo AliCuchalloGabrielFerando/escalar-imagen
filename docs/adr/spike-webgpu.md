@@ -81,10 +81,10 @@ software)**. Los tiempos **no son representativos de hardware real** (no hay GPU
 Medición del usuario con la página `public/bench/index.html` (misma imagen y tiling para
 ambos backends):
 
-| Backend | Tiempo | Speedup |
-|---------|--------|---------|
-| **WebGPU** | **~300 ms** | **~66×** |
-| WASM | ~20 s | 1× |
+| Backend | Tiempo medio | Speedup |
+|---------|--------------|---------|
+| **WebGPU** | **354 ms** | **54.19×** |
+| WASM | 19179 ms | 1× |
 
 > 🚀 Mucho mayor de lo esperado (ORT documenta 5-10×): el WASM es single-thread y la GPU
 > acelera fuertemente las convoluciones de Real-ESRGAN. Confirma que merece la pena.
@@ -110,7 +110,7 @@ ambos backends):
 
 | Aspecto | Resultado |
 |---------|-----------|
-| Velocidad | **~66×** medido en Radeon RX 9060 (~300 ms vs ~20 s) |
+| Velocidad | **54.19×** medido en Radeon RX 9060 (354 ms vs 19179 ms) |
 | Cobertura | WebGPU **solo Chromium** (ORT Web no soporta Safari/Firefox aún) → fallback WASM |
 | Memoria GPU | A vigilar en móvil (tile grande = más VRAM) |
 | Privacidad | Sin cambios (todo local) |
@@ -119,10 +119,10 @@ ambos backends):
 
 ## Herramienta de benchmark
 
-`public/bench/index.html` — página autocontenida que compara **WebGPU vs WASM** sobre la
-misma imagen y el mismo tiling, con validación de salida (mean RGB) para detectar corrupción.
+Ruta **`/lab`** (enlazada desde el footer) — compara **WebGPU vs WASM** sobre la misma imagen
+y el mismo tiling, con validación de salida (mean RGB) para detectar corrupción.
 
-- Accesible en `/bench/index.html` (servida por la app; también vale servir `public/` en estático).
+- Componente: `src/interface/lab/lab-bench.tsx`; worker: `public/bench-worker.js`.
 - Muestra info del adaptador (`navigator.gpu.requestAdapter`), tiempos de creación y por run,
   media, tamaño de salida y **speedup**.
 - Verificado en headless: ambos backends devuelven el mismo mean (`0.3280`), confirmando que la
@@ -155,6 +155,6 @@ misma imagen y el mismo tiling, con validación de salida (mean RGB) para detect
 
 **WebGPU es viable y muy rentable para este modelo.** El bloqueo inicial (shape mismatch) es un bug
 conocido de ORT con dims simbólicas, resuelto con `freeDimensionOverrides` + ventana constante, ya
-implementado. En hardware real (Radeon RX 9060) el speedup medido es de **~66×** (~300 ms vs ~20 s).
+implementado. En hardware real (Radeon RX 9060) el speedup medido es de **54.19×** (354 ms vs 19179 ms).
 El fallback WASM garantiza compatibilidad en Safari/Firefox. El impacto en el servidor es nulo
 (solo el peso muerto del wasm en el build, fácil de eliminar).
