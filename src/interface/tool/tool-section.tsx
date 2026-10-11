@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import type { OutputFormat } from '@/composition/container'
 import { DEFAULT_MODEL_URL, UpscaleOptions } from '@/composition/container'
@@ -192,6 +193,16 @@ export function ToolSection() {
           {busy ? message : done ? 'Completado' : input ? 'Listo' : 'Elige una imagen'}
         </span>
       </div>
+
+      <p className="mt-6 text-xs uppercase tracking-label text-faint">
+        ¿Curioso por el rendimiento?{' '}
+        <Link
+          href="/lab"
+          className="text-muted underline underline-offset-4 hover:text-ink"
+        >
+          Abre el laboratorio (WebGPU vs WASM)
+        </Link>
+      </p>
 
       <details className="mt-8 border-t border-hairline pt-6">
         <summary className="cursor-pointer text-xs uppercase tracking-label text-muted">
