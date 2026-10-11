@@ -18,7 +18,12 @@ export class UpscaleImageUseCase {
     const options = UpscaleOptions.create(input.options)
     const startedAt = this.clock.now()
 
-    const image = await this.upscaler.upscale(input.image, options, input.onProgress)
+    const image = await this.upscaler.upscale(
+      input.image,
+      options,
+      input.onProgress,
+      input.onBackend,
+    )
 
     return {
       image,

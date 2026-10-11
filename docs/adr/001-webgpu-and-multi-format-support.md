@@ -12,7 +12,7 @@
 
 | Tema | Decisión propuesta | Riesgo | Impacto servidor | Impacto usuario |
 |------|--------------------|--------|------------------|-----------------|
-| **WebGPU** | Opción A: `onnxruntime-web/webgpu` + fallback WASM, tras feature flag | Medio | ~0 (todo client-side) | 5-10x más rápido (solo Chromium) |
+| **WebGPU** | Opción A: `onnxruntime-web/webgpu` + fallback WASM, detección automática — **✅ validado en spike** (ver [spike-webgpu.md](./spike-webgpu.md)) | Medio | ~0 (todo client-side) | 5-10x más rápido (solo Chromium) |
 | **Formatos salida** | Scope nativo: **PNG, JPEG, WebP**. AVIF/JXL fuera de v1 (requieren WASM) | Bajo | ~0 (todo client-side) | Menos tamaño, más compatibilidad |
 
 > **Hallazgo clave:** todo el pipeline (decode → inferencia → encode) corre en el navegador. Ni WebGPU ni los formatos afectan al cómputo del servidor; solo al **tamaño de bundle/assets** que se sirven.
@@ -166,7 +166,8 @@ const session = await ort.InferenceSession.create(modelUrl, {
 2. **Detectar soporte antes de intentar:** `if (!('gpu' in navigator))` → usar WASM directo (evita warnings y tiempos de fallo).
 3. **Proxy worker incompatible:** el proxy de ORT no funciona con WebGPU (GPU buffers no son transferibles). El proyecto ya usa `proxy = false` y crea la sesión dentro del Worker → **compatible**.
 4. **Worker module:** crear la sesión en el worker (como ya se hace) es válido; no hace falta `importScripts`.
-5. **Bump de versión:** subir `onnxruntime-web` a la última 1.22+ para mejoras de WebGPU EP y correcciones de `wasmBinary`/workers.
+5. **Bump de versión:** subir `onnxruntime-web` a la última 1.22+ para mejoras de WebGPU EP y correcciones de `wasmBinary`/workers. *(Aplicado: 1.30.0.)*
+6. **`freeDimensionOverrides` + ventana constante (CRÍTICO):** el modelo declara dims simbólicas (`batch_size`, `height`, `width`). Sin fijarlas, el WebGPU EP falla con `Shape mismatch attempting to re-use buffer` (reutiliza el buffer de entrada para la salida 4× mayor). El fix exige alimentar **siempre el mismo tamaño de ventana** (`tile + 2*padding`, con replicación de bordes). Validado en el spike.
 
 ### 3.5 Plan de Migración
 
@@ -189,7 +190,8 @@ graph LR
 | Riesgo | Prob. | Impacto | Mitigación |
 |--------|-------|---------|------------|
 | ORT Web no soporta Safari/Firefox | **Alta** | Medio | Fallback WASM por detección, no por UA |
-| Modelo con ops no soportadas por WebGPU EP | Media | Alto | Spike temprano: crear sesión y correr 1 tile |
+| Dims simbólicas rompen el planner de buffers del WebGPU EP | **Confirmada** | Alto | **Resuelto**: `freeDimensionOverrides` + ventana constante (validado en spike) |
+| Peso muerto del wasm (26.7 MB) en el build | Confirmada | Bajo | Excluir el asset emitido del build (condición webpack) |
 | Cold start (compilación de shaders) | Alta | Medio | Pre-warm al cargar; cachear pipeline |
 | OOM de memoria GPU en móvil | Media | Alto | Tiling adaptativo (ya existe); limitar tamaño |
 | Bundle más pesado | Media | Medio | Cargar `webgpu` solo en el Worker, lazy |

@@ -12,10 +12,20 @@ export interface UpscaleProgress {
   message: string
 }
 
+/** Which compute backend ended up running the model, after fallback. */
+export interface UpscaleBackendInfo {
+  backend: 'webgpu' | 'wasm'
+  /** Providers requested, in preference order. */
+  requested: readonly string[]
+  /** Whether the browser exposed `navigator.gpu`. */
+  webgpuApi: boolean
+}
+
 export interface ImageUpscaler {
   upscale(
     image: RgbaImage,
     options: UpscaleOptions,
     onProgress?: (progress: UpscaleProgress) => void,
+    onBackend?: (info: UpscaleBackendInfo) => void,
   ): Promise<RgbaImage>
 }

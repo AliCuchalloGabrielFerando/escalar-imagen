@@ -5,6 +5,7 @@
  */
 import type {
   ImageUpscaler,
+  UpscaleBackendInfo,
   UpscaleProgress,
 } from '@/application/ports/image-upscaler.port'
 import { RgbaImage } from '@/domain/value-objects/rgba-image.vo'
@@ -16,6 +17,7 @@ interface PendingRequest {
   resolve: (image: RgbaImage) => void
   reject: (error: Error) => void
   onProgress?: (progress: UpscaleProgress) => void
+  onBackend?: (info: UpscaleBackendInfo) => void
 }
 
 export class WorkerImageUpscaler implements ImageUpscaler {
@@ -28,13 +30,14 @@ export class WorkerImageUpscaler implements ImageUpscaler {
     image: RgbaImage,
     options: UpscaleOptions,
     onProgress?: (progress: UpscaleProgress) => void,
+    onBackend?: (info: UpscaleBackendInfo) => void,
   ): Promise<RgbaImage> {
     const worker = this.ensureWorker()
     const id = crypto.randomUUID()
     const rgba = image.data.slice().buffer
 
     return new Promise<RgbaImage>((resolve, reject) => {
-      this.pending.set(id, { resolve, reject, onProgress })
+      this.pending.set(id, { resolve, reject, onProgress, onBackend })
 
       const request: UpscaleWorkerRequest = {
         id,
@@ -74,6 +77,15 @@ export class WorkerImageUpscaler implements ImageUpscaler {
 
     if (message.type === 'progress') {
       entry.onProgress?.({ ratio: message.ratio, message: message.message })
+      return
+    }
+
+    if (message.type === 'backend') {
+      entry.onBackend?.({
+        backend: message.backend,
+        requested: message.requested,
+        webgpuApi: message.webgpuApi,
+      })
       return
     }
 

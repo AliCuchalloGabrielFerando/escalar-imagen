@@ -13,6 +13,8 @@ export function ResultDisplay({
   message,
   durationMs,
   error,
+  backend,
+  webgpuApi,
 }: {
   inputUrl: string
   inputLabel: string
@@ -24,6 +26,8 @@ export function ResultDisplay({
   message: string
   durationMs: number | null
   error: string | null
+  backend: 'webgpu' | 'wasm' | null
+  webgpuApi: boolean
 }) {
   const busy = status === 'decoding' || status === 'upscaling' || status === 'encoding'
   const done = status === 'done' && resultUrl !== null
@@ -74,8 +78,20 @@ export function ResultDisplay({
 
       {done && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-hairline px-4 py-3">
-          <p className="text-xs text-muted">
-            {durationMs !== null ? `${Math.round(durationMs)} ms` : ''}
+          <p className="flex items-center gap-3 text-xs text-muted">
+            <span>{durationMs !== null ? `${Math.round(durationMs)} ms` : ''}</span>
+            {backend && (
+              <span
+                className="border border-hairline px-2 py-0.5 uppercase tracking-label"
+                title={
+                  webgpuApi
+                    ? 'navigator.gpu disponible en este navegador'
+                    : 'navigator.gpu no disponible: se usó WASM'
+                }
+              >
+                {backend === 'webgpu' ? 'WebGPU' : 'WASM'}
+              </span>
+            )}
           </p>
           <a
             href={resultUrl ?? '#'}

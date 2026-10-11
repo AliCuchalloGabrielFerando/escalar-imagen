@@ -26,6 +26,12 @@ export interface UpscaleState {
   resultWidth: number
   resultHeight: number
   durationMs: number | null
+  /** Compute backend actually used for the last run (spike diagnostics). */
+  backend: 'webgpu' | 'wasm' | null
+  /** Providers requested, in preference order. */
+  requestedProviders: string[]
+  /** Whether the browser exposed `navigator.gpu`. */
+  webgpuApi: boolean
 }
 
 const initialState: UpscaleState = {
@@ -37,6 +43,9 @@ const initialState: UpscaleState = {
   resultWidth: 0,
   resultHeight: 0,
   durationMs: null,
+  backend: null,
+  requestedProviders: [],
+  webgpuApi: false,
 }
 
 export function useUpscaleImage() {
@@ -85,6 +94,13 @@ export function useUpscaleImage() {
           options,
           onProgress: (progress) =>
             setState((prev) => ({ ...prev, progress: progress.ratio, message: progress.message })),
+          onBackend: (info) =>
+            setState((prev) => ({
+              ...prev,
+              backend: info.backend,
+              requestedProviders: [...info.requested],
+              webgpuApi: info.webgpuApi,
+            })),
         })
 
         setState((prev) => ({ ...prev, status: 'encoding', progress: 1, message: 'Codificando resultado…' }))
@@ -92,7 +108,8 @@ export function useUpscaleImage() {
         const url = URL.createObjectURL(blob)
         resultUrlRef.current = url
 
-        setState({
+        setState((prev) => ({
+          ...prev,
           status: 'done',
           progress: 1,
           message: 'Listo',
@@ -101,7 +118,7 @@ export function useUpscaleImage() {
           resultWidth: result.width,
           resultHeight: result.height,
           durationMs,
-        })
+        }))
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         setState((prev) => ({ ...prev, status: 'error', error: message, message: '' }))

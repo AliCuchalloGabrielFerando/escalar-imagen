@@ -19,5 +19,10 @@ export function createImageCodec(): ImageCodec {
 
 // Re-exported for the Interface layer so it never imports Domain/Infrastructure directly.
 export { DEFAULT_MODEL_URL } from '@/infrastructure/onnx/model'
+export {
+  detectWebGpuSupport,
+  canAcquireWebGpuAdapter,
+} from '@/infrastructure/onnx/webgpu-support'
+export type { WebGpuSupport } from '@/infrastructure/onnx/webgpu-support'
 export { UpscaleOptions } from '@/domain/value-objects/upscale-options.vo'
 export type { UpscaleOptionsProps } from '@/domain/value-objects/upscale-options.vo'
