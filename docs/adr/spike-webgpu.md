@@ -104,6 +104,21 @@ software)**. Los tiempos **no son representativos de hardware real** (no hay GPU
 
 ---
 
+## Herramienta de benchmark
+
+`public/bench/index.html` — página autocontenida que compara **WebGPU vs WASM** sobre la
+misma imagen y el mismo tiling, con validación de salida (mean RGB) para detectar corrupción.
+
+- Accesible en `/bench/index.html` (servida por la app; también vale servir `public/` en estático).
+- Muestra info del adaptador (`navigator.gpu.requestAdapter`), tiempos de creación y por run,
+  media, tamaño de salida y **speedup**.
+- Verificado en headless: ambos backends devuelven el mismo mean (`0.3280`), confirmando que la
+  salida es idéntica. *(En SwiftShader WebGPU sale 0.04× por ser software; el dato real requiere GPU.)*
+
+> ⚠️ Es una herramienta de desarrollo: conviene retirarla o gatearla antes de producción.
+
+---
+
 ## Limitaciones y trabajo pendiente
 
 1. **Benchmark real pendiente**: medir en GPU de hardware (NVIDIA/AMD/Intel/Apple) — SwiftShader
