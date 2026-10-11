@@ -1,8 +1,13 @@
-# fly.toml app configuration for escalar-imagen
-# See https://fly.io/docs/reference/configuration/ for information about this file.
+# fly.toml app configuration file generated for escalar-imagen on 2026-10-11T00:28:41Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
 app = 'escalar-imagen'
 primary_region = 'gru'
+
+[experimental]
+  auto_rollback = true
 
 [build]
 
@@ -13,10 +18,6 @@ primary_region = 'gru'
   auto_start_machines = true
   min_machines_running = 0
   processes = ['app']
-
-[experimental]
-  # Permitir que la app escuche en todas las interfaces
-  auto_rollback = true
 
 [[vm]]
   cpu_kind = 'shared'
