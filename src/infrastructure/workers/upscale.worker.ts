@@ -22,8 +22,7 @@ ort.env.wasm.numThreads = 1
 ort.env.wasm.proxy = false
 
 let session: ort.InferenceSession | null = null
-let loadedModelUrl: string | null = null
-let loadedWindow = -1
+let loadedKey: string | null = null
 let activeBackend: UpscaleBackend = 'wasm'
 let requestedProviders: string[] = ['wasm']
 let webgpuApi = false
@@ -52,24 +51,25 @@ async function resolveActiveBackend(requestedWebGpu: boolean): Promise<UpscaleBa
 /**
  * Creates (or reuses) the inference session.
  *
- * `window` is the constant edge of every input tile fed to the model. A fixed
- * window is mandatory on the WebGPU EP: the model declares symbolic
- * `height`/`width`, and without pinning them via `freeDimensionOverrides` the
- * allocator tries to reuse the input buffer for the 4x-larger output and fails.
- * The overrides are also size-bound, so the session is re-created if the window
- * changes (e.g. the user edits the tile size).
+ * When WebGPU is available, the model's symbolic `height`/`width` are pinned via
+ * `freeDimensionOverrides` (otherwise the allocator reuses the input buffer for
+ * the 4x-larger output and fails with "Shape mismatch attempting to re-use
+ * buffer"). The override is size-bound, so the session is re-created when the
+ * window changes. Pure-WASM machines skip all of this (no override, variable
+ * windows) and keep the cheaper original path.
  */
 async function getSession(modelUrl: string, window: number): Promise<ort.InferenceSession> {
-  if (session && loadedModelUrl === modelUrl && loadedWindow === window) return session
+  const support = detectWebGpuSupport()
+  webgpuApi = support.apiAvailable
+
+  const cacheKey = webgpuApi ? `${modelUrl}|${window}` : modelUrl
+  if (session && loadedKey === cacheKey) return session
   if (session) {
     await session.release?.()
     session = null
   }
 
-  const support = detectWebGpuSupport()
-  webgpuApi = support.apiAvailable
   requestedProviders = webgpuApi ? ['webgpu', 'wasm'] : ['wasm']
-
   const baseOptions: ort.InferenceSession.SessionOptions = {
     executionProviders: requestedProviders,
     graphOptimizationLevel: 'all',
@@ -94,8 +94,7 @@ async function getSession(modelUrl: string, window: number): Promise<ort.Inferen
   }
 
   activeBackend = await resolveActiveBackend(webgpuApi)
-  loadedModelUrl = modelUrl
-  loadedWindow = window
+  loadedKey = cacheKey
   return session
 }
 
@@ -103,12 +102,42 @@ function post(message: UpscaleWorkerResponse, transfer?: Transferable[]): void {
   ctx.postMessage(message, transfer ?? [])
 }
 
+/**
+ * Builds the NCHW float32 RGB input window. When `clampEdges` is true the window
+ * may read outside the image (replicating edge pixels) to keep a constant shape.
+ */
+function buildInput(
+  src: Uint8ClampedArray,
+  srcW: number,
+  srcH: number,
+  originX: number,
+  originY: number,
+  width: number,
+  height: number,
+  clampEdges: boolean,
+): Float32Array {
+  const plane = width * height
+  const input = new Float32Array(3 * plane)
+  for (let y = 0; y < height; y++) {
+    const sy = clampEdges ? clamp(originY + y, 0, srcH - 1) : originY + y
+    const rowSrc = sy * srcW
+    for (let x = 0; x < width; x++) {
+      const sx = clampEdges ? clamp(originX + x, 0, srcW - 1) : originX + x
+      const s = (rowSrc + sx) * 4
+      const d = y * width + x
+      input[d] = src[s] / 255
+      input[plane + d] = src[s + 1] / 255
+      input[2 * plane + d] = src[s + 2] / 255
+    }
+  }
+  return input
+}
+
 async function runInference(
   req: UpscaleWorkerRequest,
 ): Promise<{ width: number; height: number; rgba: Uint8ClampedArray<ArrayBuffer> }> {
   const tile = req.tileSize
   const pad = req.tilePadding
-  // Constant input window. WebGPU requires a fixed shape (see getSession).
   const win = tile + 2 * pad
 
   const activeSession = await getSession(req.modelUrl, win)
@@ -135,7 +164,6 @@ async function runInference(
   const output = new Uint8ClampedArray(outW * outH * 4)
 
   const totalTiles = Math.ceil(srcW / tile) * Math.ceil(srcH / tile)
-  const plane = win * win
   let processed = 0
 
   for (let ty = 0; ty < srcH; ty += tile) {
@@ -143,26 +171,35 @@ async function runInference(
       const tileW = Math.min(tile, srcW - tx)
       const tileH = Math.min(tile, srcH - ty)
 
-      // Constant-size window anchored so the tile sits at (pad, pad). Out-of-
-      // bounds samples are clamped (edge replication), keeping the shape fixed.
-      const winX = tx - pad
-      const winY = ty - pad
-      const input = new Float32Array(3 * plane)
-      for (let y = 0; y < win; y++) {
-        const sy = clamp(winY + y, 0, srcH - 1)
-        const rowSrc = sy * srcW
-        for (let x = 0; x < win; x++) {
-          const sx = clamp(winX + x, 0, srcW - 1)
-          const s = (rowSrc + sx) * 4
-          const d = y * win + x
-          input[d] = src[s] / 255
-          input[plane + d] = src[s + 1] / 255
-          input[2 * plane + d] = src[s + 2] / 255
-        }
+      let pw: number
+      let ph: number
+      let cropL: number
+      let cropT: number
+      let input: Float32Array
+
+      if (webgpuApi) {
+        // WebGPU: fixed-size window (required by freeDimensionOverrides), with
+        // edge replication so the shape never varies.
+        pw = win
+        ph = win
+        cropL = pad * MODEL_SCALE
+        cropT = pad * MODEL_SCALE
+        input = buildInput(src, srcW, srcH, tx - pad, ty - pad, win, win, true)
+      } else {
+        // WASM: variable window clamped to the image bounds (original, cheaper).
+        const sx = Math.max(0, tx - pad)
+        const sy = Math.max(0, ty - pad)
+        const ex = Math.min(srcW, tx + tileW + pad)
+        const ey = Math.min(srcH, ty + tileH + pad)
+        pw = ex - sx
+        ph = ey - sy
+        cropL = (tx - sx) * MODEL_SCALE
+        cropT = (ty - sy) * MODEL_SCALE
+        input = buildInput(src, srcW, srcH, sx, sy, pw, ph, false)
       }
 
       const feeds: Record<string, ort.Tensor> = {
-        [inputName]: new ort.Tensor('float32', input, [1, 3, win, win]),
+        [inputName]: new ort.Tensor('float32', input, [1, 3, ph, pw]),
       }
       if (weightInputName) {
         feeds[weightInputName] = new ort.Tensor(
@@ -180,9 +217,7 @@ async function runInference(
       const data = tileOutput.data as Float32Array
       const outPlane = ow * oh
 
-      // The valid tile sits at window offset `pad`; crop it and place it.
-      const cropL = pad * MODEL_SCALE
-      const cropT = pad * MODEL_SCALE
+      // Crop the valid tile out of the window and place it.
       const validW = tileW * MODEL_SCALE
       const validH = tileH * MODEL_SCALE
 
