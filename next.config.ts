@@ -10,6 +10,25 @@ import type { NextConfig } from 'next'
 const nextConfig: NextConfig = {
   output: 'standalone',
   reactStrictMode: true,
+
+  async headers() {
+    return [
+      {
+        // Models are large (4.7 MB) and effectively immutable: let the browser
+        // cache them for a year instead of revalidating on every load.
+        // NOTE: if you replace a model file, rename it (or bump the URL) so
+        // clients pick up the new version instead of the cached one.
+        source: '/models/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+      {
+        // Demo samples are static too.
+        source: '/samples/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+    ]
+  },
+
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Resolve onnxruntime-web's WebGPU entry to the "extern wasm" build so

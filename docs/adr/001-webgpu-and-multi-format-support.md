@@ -398,7 +398,7 @@ Sem 5-6: Rollout WebGPU + telemetría; (opcional) spike WASM AVIF
 | 3 | **Actualizar `onnxruntime-web` (1.20.1 → 1.22+) en rama nueva** | ✅ Decidido | Necesario para mejor WebGPU EP; se hará en `feat/webgpu-native-formats` |
 | 4 | Presets de calidad vs slider | ⏳ Pendiente (diseño UI) | Recomendación: 3 presets + "Personalizado" |
 | 5 | Formato default | ⏳ Pendiente (diseño UI) | Recomendación: PNG si alpha, WebP si `encodable`, JPEG universal |
-| 6 | Servir el modelo desde CDN | ⏳ Pendiente (fuera de scope) | Recomendable por bandwidth (4.7 MB por primera visita) |
+| 6 | Modelo: caché inmutable en el mismo origen | ✅ Decidido (CDN diferido) | `Cache-Control: immutable` evita revalidar; sin terceros (privacidad/Brave). Un CDN proxy sobre el dominio se evalúa más adelante |
 
 > **Nota de implementación:** la actualización de `onnxruntime-web` y el resto del trabajo se realizará en la rama **`feat/webgpu-native-formats`**, no en `main`.
 
