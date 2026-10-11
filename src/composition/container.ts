@@ -26,3 +26,11 @@ export {
 export type { WebGpuSupport } from '@/infrastructure/onnx/webgpu-support'
 export { UpscaleOptions } from '@/domain/value-objects/upscale-options.vo'
 export type { UpscaleOptionsProps } from '@/domain/value-objects/upscale-options.vo'
+export { OUTPUT_FORMATS } from '@/application/ports/image-codec.port'
+export type {
+  EncodeOptions,
+  FormatCapability,
+  ImageCodec,
+  OutputFormat,
+} from '@/application/ports/image-codec.port'
+export type { RgbaImage } from '@/domain/value-objects/rgba-image.vo'

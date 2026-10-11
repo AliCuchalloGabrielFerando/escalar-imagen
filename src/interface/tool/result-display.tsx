@@ -1,6 +1,13 @@
 'use client'
 
+import type { OutputFormat } from '@/composition/container'
 import type { UpscaleStatus } from '../hooks/use-upscale-image'
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+}
 
 export function ResultDisplay({
   inputUrl,
@@ -8,6 +15,9 @@ export function ResultDisplay({
   resultUrl,
   resultWidth,
   resultHeight,
+  resultFormat,
+  resultExtension,
+  resultBytes,
   status,
   progress,
   message,
@@ -21,6 +31,9 @@ export function ResultDisplay({
   resultUrl: string | null
   resultWidth: number
   resultHeight: number
+  resultFormat: OutputFormat | null
+  resultExtension: string | null
+  resultBytes: number | null
   status: UpscaleStatus
   progress: number
   message: string
@@ -30,7 +43,9 @@ export function ResultDisplay({
   webgpuApi: boolean
 }) {
   const busy = status === 'decoding' || status === 'upscaling' || status === 'encoding'
-  const done = status === 'done' && resultUrl !== null
+  const showResult = resultUrl !== null
+  const reencoding = showResult && status === 'encoding'
+  const formatLabel = resultFormat ? resultFormat.toUpperCase() : 'PNG'
 
   return (
     <div className="border border-hairline">
@@ -46,8 +61,9 @@ export function ResultDisplay({
         <figure className="p-4">
           <figcaption className="mb-3 text-xs uppercase tracking-label text-muted">
             Resultado {resultWidth > 0 ? `· ${resultWidth}×${resultHeight}` : ''}
+            {reencoding ? ' · recodificando…' : ''}
           </figcaption>
-          {done ? (
+          {showResult ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={resultUrl ?? ''}
@@ -62,7 +78,7 @@ export function ResultDisplay({
         </figure>
       </div>
 
-      {!done && (
+      {busy && !showResult && (
         <div className="border-t border-hairline px-4 py-3">
           <div className="h-px w-full bg-hairline">
             <div
@@ -71,12 +87,12 @@ export function ResultDisplay({
             />
           </div>
           <p className="mt-2 text-xs text-muted">
-            {busy ? `${Math.round(progress * 100)}% · ${message}` : 'Listo para escalar'}
+            {`${Math.round(progress * 100)}% · ${message}`}
           </p>
         </div>
       )}
 
-      {done && (
+      {showResult && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-hairline px-4 py-3">
           <p className="flex items-center gap-3 text-xs text-muted">
             <span>{durationMs !== null ? `${Math.round(durationMs)} ms` : ''}</span>
@@ -92,13 +108,16 @@ export function ResultDisplay({
                 {backend === 'webgpu' ? 'WebGPU' : 'WASM'}
               </span>
             )}
+            {resultBytes !== null && (
+              <span className="uppercase tracking-label">{formatBytes(resultBytes)}</span>
+            )}
           </p>
           <a
             href={resultUrl ?? '#'}
-            download={`escala4x-${resultWidth}x${resultHeight}.png`}
+            download={`escala4x-${resultWidth}x${resultHeight}.${resultExtension ?? 'png'}`}
             className="text-xs uppercase tracking-label underline underline-offset-4"
           >
-            Descargar PNG
+            Descargar {formatLabel}
           </a>
         </div>
       )}

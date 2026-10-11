@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import type { OutputFormat } from '@/composition/container'
 import {
   canAcquireWebGpuAdapter,
   DEFAULT_MODEL_URL,
@@ -10,6 +11,7 @@ import {
 import { SAMPLES, type Sample } from '../content/samples'
 import { useUpscaleImage } from '../hooks/use-upscale-image'
 import { DemoFilmstrip } from './demo-filmstrip'
+import { OutputOptions } from './output-options'
 import { ResultDisplay } from './result-display'
 import { UploadDropzone } from './upload-dropzone'
 
@@ -28,10 +30,15 @@ export function ToolSection() {
     resultUrl,
     resultWidth,
     resultHeight,
+    resultFormat,
+    resultExtension,
+    resultBytes,
     durationMs,
     backend,
     webgpuApi,
+    capabilities,
     upscale,
+    reencode,
     reset,
   } = useUpscaleImage()
 
@@ -41,12 +48,15 @@ export function ToolSection() {
   const [tileSize, setTileSize] = useState<number>(UpscaleOptions.DEFAULT_TILE_SIZE)
   const [tilePadding, setTilePadding] = useState<number>(UpscaleOptions.DEFAULT_TILE_PADDING)
   const [denoiseWeight, setDenoiseWeight] = useState<number>(UpscaleOptions.DEFAULT_DENOISE_WEIGHT)
+  const [format, setFormat] = useState<OutputFormat>('png')
+  const [quality, setQuality] = useState(0.9)
 
   const [gpuProbe, setGpuProbe] = useState<
     { apiAvailable: boolean; adapter: boolean | null; reason?: string } | null
   >(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const lastEncodedRef = useRef('')
 
   const busy = status === 'decoding' || status === 'upscaling' || status === 'encoding'
   const done = status === 'done'
@@ -67,6 +77,24 @@ export function ToolSection() {
     if (!input) return
     return () => URL.revokeObjectURL(input.url)
   }, [input])
+
+  // If the selected format turns out to be unsupported, fall back to one that is.
+  useEffect(() => {
+    const current = capabilities.find((entry) => entry.format === format)
+    if (current && !current.encodable) {
+      const fallback = capabilities.find((entry) => entry.encodable)
+      if (fallback && fallback.format !== format) setFormat(fallback.format)
+    }
+  }, [capabilities, format])
+
+  // Re-encode the existing result when the format/quality changes (no re-inference).
+  useEffect(() => {
+    if (status !== 'done') return
+    const key = `${format}:${quality}`
+    if (lastEncodedRef.current === key) return
+    lastEncodedRef.current = key
+    reencode({ format, quality })
+  }, [status, format, quality, reencode])
 
   const openPicker = () => fileInputRef.current?.click()
 
@@ -90,11 +118,13 @@ export function ToolSection() {
 
   const run = () => {
     if (!input) return
-    upscale(input.blob, modelUrl.trim() || DEFAULT_MODEL_URL, {
-      tileSize,
-      tilePadding,
-      denoiseWeight,
-    })
+    lastEncodedRef.current = `${format}:${quality}`
+    upscale(
+      input.blob,
+      modelUrl.trim() || DEFAULT_MODEL_URL,
+      { tileSize, tilePadding, denoiseWeight },
+      { format, quality },
+    )
   }
 
   const restart = () => {
@@ -126,6 +156,9 @@ export function ToolSection() {
               resultUrl={resultUrl}
               resultWidth={resultWidth}
               resultHeight={resultHeight}
+              resultFormat={resultFormat}
+              resultExtension={resultExtension}
+              resultBytes={resultBytes}
               status={status}
               progress={progress}
               message={message}
@@ -144,6 +177,17 @@ export function ToolSection() {
           selectedId={selectedSample}
           onSelect={selectSample}
           onBrowse={openPicker}
+          disabled={busy}
+        />
+      </div>
+
+      <div className="mt-6">
+        <OutputOptions
+          capabilities={capabilities}
+          format={format}
+          quality={quality}
+          onFormatChange={setFormat}
+          onQualityChange={setQuality}
           disabled={busy}
         />
       </div>
