@@ -2,12 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { OutputFormat } from '@/composition/container'
-import {
-  canAcquireWebGpuAdapter,
-  DEFAULT_MODEL_URL,
-  detectWebGpuSupport,
-  UpscaleOptions,
-} from '@/composition/container'
+import { DEFAULT_MODEL_URL, UpscaleOptions } from '@/composition/container'
 import { SAMPLES, type Sample } from '../content/samples'
 import { useUpscaleImage } from '../hooks/use-upscale-image'
 import { DemoFilmstrip } from './demo-filmstrip'
@@ -34,8 +29,6 @@ export function ToolSection() {
     resultExtension,
     resultBytes,
     durationMs,
-    backend,
-    webgpuApi,
     capabilities,
     upscale,
     reencode,
@@ -51,27 +44,11 @@ export function ToolSection() {
   const [format, setFormat] = useState<OutputFormat>('png')
   const [quality, setQuality] = useState(0.9)
 
-  const [gpuProbe, setGpuProbe] = useState<
-    { apiAvailable: boolean; adapter: boolean | null; reason?: string } | null
-  >(null)
-
   const fileInputRef = useRef<HTMLInputElement>(null)
   const lastEncodedRef = useRef('')
 
   const busy = status === 'decoding' || status === 'upscaling' || status === 'encoding'
   const done = status === 'done'
-
-  useEffect(() => {
-    let cancelled = false
-    const support = detectWebGpuSupport()
-    setGpuProbe({ apiAvailable: support.apiAvailable, adapter: null, reason: support.reason })
-    canAcquireWebGpuAdapter().then((adapter) => {
-      if (!cancelled) setGpuProbe({ apiAvailable: support.apiAvailable, adapter, reason: support.reason })
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   useEffect(() => {
     if (!input) return
@@ -164,8 +141,6 @@ export function ToolSection() {
               message={message}
               durationMs={durationMs}
               error={error}
-              backend={backend}
-              webgpuApi={webgpuApi}
             />
           ) : (
             <UploadDropzone onFile={selectFile} onBrowse={openPicker} />
@@ -222,21 +197,6 @@ export function ToolSection() {
         <summary className="cursor-pointer text-xs uppercase tracking-label text-muted">
           Opciones avanzadas
         </summary>
-
-        {gpuProbe && (
-          <p className="mt-4 text-xs text-muted">
-            WebGPU:{' '}
-            <span className="text-ink">
-              {gpuProbe.apiAvailable
-                ? gpuProbe.adapter === null
-                  ? 'comprobando adaptador…'
-                  : gpuProbe.adapter
-                    ? 'disponible (se usará si ORT lo soporta)'
-                    : 'API presente, sin adaptador'
-                : `no disponible${gpuProbe.reason ? ` — ${gpuProbe.reason}` : ''}`}
-            </span>
-          </p>
-        )}
 
         <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <label className="flex flex-col gap-2">

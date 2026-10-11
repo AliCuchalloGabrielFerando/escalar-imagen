@@ -145,8 +145,9 @@ y el mismo tiling, con validación de salida (mean RGB) para detectar corrupció
    defecto. Hay un `try/catch` que reintenta sin overrides para modelos personalizados.
 4. **Re-creación de sesión** al cambiar el tamaño de tile (el override depende de `WIN`). Correcto
    pero con coste de recarga del modelo.
-5. **Diagnóstico temporal**: el badge/probe se pueden mantener como telemetría o retirar antes de
-   producción.
+5. **Diagnósticos**: el badge de backend y el probe de GPU se retiraron de la herramienta principal
+   (la UI de usuario final no muestra jerga técnica). La ruta **`/lab`** conserva el diagnóstico
+   completo. El worker sigue reportando el backend por si se quiere telemetría futura.
 6. **`onnxruntime-web/webgpu` es experimental** según ORT; versionar y testear en cada actualización.
 
 ---

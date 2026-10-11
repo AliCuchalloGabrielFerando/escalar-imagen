@@ -33,12 +33,6 @@ export interface UpscaleState {
   resultExtension: string | null
   /** Encoded size in bytes. */
   resultBytes: number | null
-  /** Compute backend actually used for the last run (spike diagnostics). */
-  backend: 'webgpu' | 'wasm' | null
-  /** Providers requested, in preference order. */
-  requestedProviders: string[]
-  /** Whether the browser exposed `navigator.gpu`. */
-  webgpuApi: boolean
 }
 
 const initialState: UpscaleState = {
@@ -53,9 +47,6 @@ const initialState: UpscaleState = {
   resultFormat: null,
   resultExtension: null,
   resultBytes: null,
-  backend: null,
-  requestedProviders: [],
-  webgpuApi: false,
 }
 
 /** Optimistic default before the browser capability probe resolves. */
@@ -145,13 +136,6 @@ export function useUpscaleImage() {
           options,
           onProgress: (progress) =>
             setState((prev) => ({ ...prev, progress: progress.ratio, message: progress.message })),
-          onBackend: (info) =>
-            setState((prev) => ({
-              ...prev,
-              backend: info.backend,
-              requestedProviders: [...info.requested],
-              webgpuApi: info.webgpuApi,
-            })),
         })
 
         resultImageRef.current = result

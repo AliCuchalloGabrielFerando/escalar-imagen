@@ -3,11 +3,7 @@
  * Contains: WorkerImageUpscaler (ImageUpscaler implementation)
  * Rules: Implements an Application port. Bridges the main thread <-> Web Worker.
  */
-import type {
-  ImageUpscaler,
-  UpscaleBackendInfo,
-  UpscaleProgress,
-} from '@/application/ports/image-upscaler.port'
+import type { ImageUpscaler, UpscaleProgress } from '@/application/ports/image-upscaler.port'
 import { RgbaImage } from '@/domain/value-objects/rgba-image.vo'
 import type { UpscaleOptions } from '@/domain/value-objects/upscale-options.vo'
 import { DEFAULT_MODEL_URL } from '../onnx/model'
@@ -17,7 +13,6 @@ interface PendingRequest {
   resolve: (image: RgbaImage) => void
   reject: (error: Error) => void
   onProgress?: (progress: UpscaleProgress) => void
-  onBackend?: (info: UpscaleBackendInfo) => void
 }
 
 export class WorkerImageUpscaler implements ImageUpscaler {
@@ -30,14 +25,13 @@ export class WorkerImageUpscaler implements ImageUpscaler {
     image: RgbaImage,
     options: UpscaleOptions,
     onProgress?: (progress: UpscaleProgress) => void,
-    onBackend?: (info: UpscaleBackendInfo) => void,
   ): Promise<RgbaImage> {
     const worker = this.ensureWorker()
     const id = crypto.randomUUID()
     const rgba = image.data.slice().buffer
 
     return new Promise<RgbaImage>((resolve, reject) => {
-      this.pending.set(id, { resolve, reject, onProgress, onBackend })
+      this.pending.set(id, { resolve, reject, onProgress })
 
       const request: UpscaleWorkerRequest = {
         id,
@@ -81,11 +75,7 @@ export class WorkerImageUpscaler implements ImageUpscaler {
     }
 
     if (message.type === 'backend') {
-      entry.onBackend?.({
-        backend: message.backend,
-        requested: message.requested,
-        webgpuApi: message.webgpuApi,
-      })
+      // Diagnostics only; not surfaced in the main UI (see the /lab route).
       return
     }
 
